@@ -1,58 +1,67 @@
 ﻿#include <cstdlib>
+#include <tuple>
 #include <iostream>
 #include <Eigen/Dense>
 
-Eigen::Matrix2Xf train_input;
-Eigen::VectorXf tarin_output;
-
-//h(x)=θ₁x+θ₂c
-//θ₁=10,θ₂=150，c=1
-void RandomGenterateTrainSet(size_t counts)
+//h(X₁,X₂)=θ₁X₁+θ₂X₂
+//θ₁=10,θ₂=150,X₂=1
+std::tuple<Eigen::MatrixX2f, Eigen::VectorXf> RandomGenterateTrainSet(size_t counts)
 {
-	train_input.resize(counts, 2);
-	tarin_output.resize(counts, Eigen::NoChange);
+	Eigen::MatrixX2f train_input;
+	Eigen::VectorXf train_output;
+	train_input.resize(counts, Eigen::NoChange);
+	train_output.resize(counts, Eigen::NoChange);
 	for (size_t i = 0; i < counts; i++)
 	{
-		float x = std::rand() % 100 + 20;
-		train_input(i, 0) = x;
-		train_input(i, 1) = 1;
-		float c = 150;
+		float X₁ = std::rand() % 100 + 20, X₂ = 1;
+		train_input(i, 0) = X₁;
+		train_input(i, 1) = X₂;
+		float θ₁ = 10, θ₂ = 150;
 		float error = std::rand() % 21 - 10;
-		float hx = x * 10 + c + error;
-		tarin_output[i] = hx;
+		float hx = θ₁ * X₁ + θ₂ * X₂ + error;
+		train_output[i] = hx;
 	}
+	return { train_input.normalized(), train_output };
 }
 
-//1/2m * ∑(h(θ)-j(θ))²
-Eigen::MatrixXf LossFunction(const Eigen::MatrixXf& model, size_t counts)
+//1/2m * ∑(h(x)-j(x))²
+Eigen::MatrixXf LossFunction(const Eigen::MatrixXf& model, const Eigen::MatrixXf& train_input, const Eigen::MatrixXf& train_output)
 {
-	Eigen::VectorXf jθ = train_input * model;
-	return (tarin_output - jθ).array().pow(2) / (counts * 2);
+	Eigen::VectorXf jx = train_input * model;
+	return (train_output - jx).array().pow(2) / (train_input.rows() * 2);
 }
 
-//θ = θ - α * 1/m * ∑(h(θ)-j(θ))²θ
-void GradientDescent(Eigen::MatrixXf& model, float learning_rate, size_t counts)
+//θ = θ - α * 1/m * ∑(h(x)-j(x)) * x
+void GradientDescent(Eigen::MatrixXf& model, const Eigen::MatrixXf& train_input, const Eigen::MatrixXf& train_output, float learning_rate, size_t batch_size)
 {
-	Eigen::MatrixXf results(train_input.rows(), model.cols());
-	for (size_t column = 0; column < model.cols(); column++)
-		for (size_t row = 0; row < model.rows(); row++)
-			results(row, column) = (learning_rate * LossFunction(model, counts) * 2 * model(row, column)).sum();
-	model -= results;
+	auto hx_sub_jx = train_output - train_input * model;
+	for (size_t i = 0; i < batch_size; i++)
+	{
+		Eigen::MatrixXf results(model.rows(), model.cols());
+		for (size_t column = 0; column < model.cols(); column++)
+		{
+			for (size_t row = 0; row < model.rows(); row++)
+			{
+				//std::cout << (hx_sub_jx * train_input.row(row)).sum() << std::endl;
+				results(row, column) = learning_rate / train_input.rows() * (hx_sub_jx * train_input.row(row)).sum();
+			}
+		}
+		//std::cout << results << std::endl;
+		model -= results;
+		std::cout << model << std::endl;
+	}
 }
 
 int main()
 {
-	RandomGenterateTrainSet(2);
+	auto [train_input, train_output] = RandomGenterateTrainSet(10);
+	//std::cout << train_input << std::endl;
+	//std::cout << train_output << std::endl;
+
+
 	Eigen::MatrixXf model = Eigen::Vector2f(1, 50);
-	float learning_rate = 2;
+	float learning_rate = 1;
 	int batch_size = 10;
-	for (size_t i = 0; i < batch_size; i++)
-	{
-		GradientDescent(model, learning_rate, train_input.rows());
-	}
-	std::cout << model(0, 0) << std::endl;
-	std::cout << model(1, 0) << std::endl;
-	/*std::cout << train_input << std::endl;
-	std::cout << tarin_output << std::endl;*/
+	GradientDescent(model, train_input, train_output, learning_rate, batch_size);
 	return 0;
 }
