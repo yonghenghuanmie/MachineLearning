@@ -17,7 +17,8 @@ std::tuple<Eigen::MatrixX2f, Eigen::VectorXf> RandomGenterateTrainSet(size_t cou
 		train_input(i, 0) = X₁;
 		train_input(i, 1) = X₂;
 		float θ₁ = 10, θ₂ = 150;
-		float error = std::rand() % 21 - 10;
+		//float error = std::rand() % 21 - 10;
+		float error = 0;
 		float hx = θ₁ * X₁ + θ₂ * X₂ + error;
 		train_output[i] = hx;
 	}
@@ -28,8 +29,8 @@ std::tuple<Eigen::MatrixX2f, Eigen::VectorXf> RandomGenterateTrainSet(size_t cou
 //1/2m * ∑(h(x) - j(x) )²
 Eigen::MatrixXf LossFunction(const Eigen::MatrixXf& model, const Eigen::MatrixXf& train_input, const Eigen::MatrixXf& train_output)
 {
-	Eigen::VectorXf jx = train_input * model;
-	return (train_output - jx).array().pow(2) / (train_input.rows() * 2);
+	auto hx_sub_jx = train_output - train_input * model;
+	return hx_sub_jx.array().pow(2) / (train_input.rows() * 2);
 }
 
 //                            i      i     i
@@ -41,19 +42,12 @@ void GradientDescent(Eigen::MatrixXf& model, const Eigen::MatrixXf& train_input,
 	{
 		for (size_t column = 0; column < model.cols(); column++)
 		{
-			Eigen::MatrixXf results = Eigen::MatrixXf::Zero(model.rows(), train_input.rows());
-			for (size_t train_index = 0; train_index < train_input.rows(); train_index++)
+			for (size_t train_index = 0; train_index < train_input.rows() && train_index + model.cols() - 1 < train_input.rows(); train_index++)
 			{
-				/*std::cout << train_input << "\n\n";
-				std::cout << train_input * model << "\n\n";
-				std::cout << hx_sub_jx << "\n\n";*/
 				auto hx_sub_jx = train_output - train_input * model;
-				results += (learning_rate / train_input.rows() * hx_sub_jx * train_input.row(train_index)).transpose();
-				std::cout << results << "\n\n";
-				for (size_t row = 0; row < model.rows(); row++)
-				{
-					model(row, column) -= results.row(row).sum();
-				}
+				/*std::cout << hx_sub_jx << "\n\n";
+				std::cout << (hx_sub_jx.row(train_index) * train_input.block(train_index, 0, hx_sub_jx.cols(), train_input.cols())).transpose() << "\n\n";*/
+				model -= (learning_rate / train_input.rows() * hx_sub_jx.row(train_index) * train_input.block(train_index, 0, hx_sub_jx.cols(), train_input.cols())).transpose();
 				std::cout << model << "\n\n";
 			}
 		}
@@ -66,10 +60,9 @@ int main()
 	//std::cout << train_input << std::endl;
 	//std::cout << train_output << std::endl;
 
-
 	Eigen::MatrixXf model = Eigen::Vector2f(1, 50);
-	float learning_rate = 0.0000001;
-	int batch_size = 10;
+	float learning_rate = 1;
+	int batch_size = 1;
 	GradientDescent(model, train_input, train_output, learning_rate, batch_size);
 	return 0;
 }
