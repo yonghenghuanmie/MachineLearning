@@ -30,6 +30,7 @@ std::tuple<Eigen::MatrixX2f, Eigen::VectorXf> RandomGenterateTrainSet(size_t cou
 Eigen::MatrixXf LossFunction(const Eigen::MatrixXf& model, const Eigen::MatrixXf& train_input, const Eigen::MatrixXf& train_output)
 {
 	auto hx_sub_jx = train_output - train_input * model;
+	//not sure
 	return hx_sub_jx.array().pow(2) / (train_input.rows() * 2);
 }
 
@@ -42,12 +43,19 @@ void GradientDescent(Eigen::MatrixXf& model, const Eigen::MatrixXf& train_input,
 	{
 		for (size_t column = 0; column < model.cols(); column++)
 		{
-			for (size_t train_index = 0; train_index < train_input.rows() && train_index + model.cols() - 1 < train_input.rows(); train_index++)
+			for (size_t train_index = 0; train_index < train_input.rows(); train_index++)
 			{
 				auto hx_sub_jx = train_output - train_input * model;
 				/*std::cout << hx_sub_jx << "\n\n";
 				std::cout << (hx_sub_jx.row(train_index) * train_input.block(train_index, 0, hx_sub_jx.cols(), train_input.cols())).transpose() << "\n\n";*/
-				model -= (learning_rate / train_input.rows() * hx_sub_jx.row(train_index) * train_input.block(train_index, 0, hx_sub_jx.cols(), train_input.cols())).transpose();
+				Eigen::MatrixXf duplicate_line(model.cols(), train_input.cols());
+				auto&& reference = duplicate_line << train_input.row(train_index);
+				for (size_t line = 0; line < model.cols() - 1; line++)
+				{
+					reference, train_input.row(train_index);
+				}
+				//std::cout << duplicate_line << "\n\n";
+				model -= (learning_rate / train_input.rows() * hx_sub_jx.row(train_index) * duplicate_line).transpose();
 				std::cout << model << "\n\n";
 			}
 		}
