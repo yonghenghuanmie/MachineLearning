@@ -1,7 +1,9 @@
 ﻿#include <cstdlib>
 #include <tuple>
+#include <optional>
 #include <iostream>
 #include <Eigen/Dense>
+#include <Eigen/LU>
 
 //h(X₁,X₂)=θ₁X₁+θ₂X₂
 //θ₁=10,θ₂=150,X₂=1
@@ -15,7 +17,7 @@ std::tuple<Eigen::MatrixX2d, Eigen::VectorXd> RandomGenterateTrainSet(size_t cou
 		train_input(i, 0) = X₁;
 		train_input(i, 1) = X₂;
 		float θ₁ = 10, θ₂ = 150;
-		float error = std::rand() % 21 - 10;
+		float error = std::rand() % 11 - 5;
 		float hx = θ₁ * X₁ + θ₂ * X₂ + error;
 		train_output[i] = hx;
 	}
@@ -23,7 +25,7 @@ std::tuple<Eigen::MatrixX2d, Eigen::VectorXd> RandomGenterateTrainSet(size_t cou
 }
 
 //              i      i
-//1/2m * ∑(h(x) - j(x) )²
+//1/2m * ∑(h(x) - y(x) )²
 Eigen::MatrixXd LossFunction(const Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output)
 {
 	auto hx_sub_jx = train_output - train_input * model;
@@ -31,12 +33,17 @@ Eigen::MatrixXd LossFunction(const Eigen::MatrixXd& model, const Eigen::MatrixXd
 }
 
 //                            i      i     i
-//θ = θ - α * 1/m * ∑(h(x) - j(x) ) * x
+//θ = θ - α * 1/m * ∑(h(x) - y(x) ) * x
 // j    j                                  j
-void GradientDescent(Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output, const Eigen::VectorXd& learning_rate, size_t batch_size)
+void GradientDescent(Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output, const Eigen::VectorXd& learning_rate, double limit)
 {
-	for (size_t i = 0; i < batch_size; i++)
+	bool convergence;
+	size_t batch_size = 0;
+	do
 	{
+		convergence = true;
+		batch_size++;
+		Eigen::MatrixXd update;
 		for (size_t train_index = 0; train_index < train_input.rows(); train_index++)
 		{
 			auto hx_sub_jx = train_output - train_input * model;
@@ -47,24 +54,50 @@ void GradientDescent(Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input,
 			{
 				reference, train_input.row(train_index);
 			}
-			Eigen::MatrixXd update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_jx.row(train_index) * duplicate_line).transpose().array();
-			/*std::cout << duplicate_line << "\n\n";
-			std::cout << update << "\n\n";*/
+			update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_jx.row(train_index) * duplicate_line).transpose().array();
+			//std::cout << duplicate_line << "\n\n";
+			//std::cout << update << "\n\n";
 			model += update;
 			std::cout << model << "\n\n";
 		}
+		for (size_t i = 0; i < update.size(); i++)
+		{
+			if (update.array()(i) > limit)
+			{
+				convergence = false;
+				break;
+			}
+		}
+	} while (!convergence);
+	std::cout << "batch_size:" << batch_size << "\n\n";
+}
+
+//  T   -1    T
+//(X *X)   * X  * y
+//\note This matrix must be invertible, otherwise the result is undefined.
+Eigen::MatrixXd NormalEquation(const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output)
+{
+	if ((train_input.transpose() * train_input).fullPivLu().isInvertible())
+	{
+		return (train_input.transpose() * train_input).inverse() * train_input.transpose() * train_output;
+	}
+	else
+	{
+		std::cout << "Not invertible!" << std::endl;
+		return {};
 	}
 }
 
 int main()
 {
-	auto [train_input, train_output] = RandomGenterateTrainSet(10);
+	auto [train_input, train_output] = RandomGenterateTrainSet(100);
 	/*std::cout << train_input << std::endl;
 	std::cout << train_output << std::endl;*/
 
-	Eigen::MatrixXd model = Eigen::Vector2d(1, 10);
-	Eigen::Vector2d learning_rate(0.001, 0.25);
-	int batch_size = 200;
-	GradientDescent(model, train_input, train_output, learning_rate, batch_size);
+	Eigen::MatrixXd model = Eigen::Vector2d(10, 100);
+	Eigen::Vector2d learning_rate(0.001, 1);
+	double limit = 0.05;
+	GradientDescent(model, train_input, train_output, learning_rate, limit);
+	std::cout << NormalEquation(train_input, train_output) << std::endl;
 	return 0;
 }
