@@ -27,10 +27,10 @@ namespace LinearRegression
 
 	//              i      i
 	//1/2m * ∑(h(x) - y(x) )²
-	Eigen::MatrixXd LossFunction(const Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output)
+	double LossFunction(const Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output)
 	{
 		auto hx_sub_jx = train_output - train_input * model;
-		return hx_sub_jx.array().pow(2) / (train_input.rows() * 2);
+		return hx_sub_jx.array().pow(2).sum() / (train_input.rows() * 2);
 	}
 
 	//                            i      i     i
