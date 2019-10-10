@@ -47,18 +47,18 @@ namespace LinearRegression
 			Eigen::MatrixXd update;
 			for (size_t train_index = 0; train_index < train_input.rows(); train_index++)
 			{
-				auto hx_sub_jx = train_output - train_input * model;
-				//std::cout << hx_sub_jx << "\n\n";
+				auto hx_sub_yx = train_input * model - train_output;
+				//std::cout << hx_sub_yx << "\n\n";
 				Eigen::MatrixXd duplicate_line(model.cols(), train_input.cols());
 				auto&& reference = duplicate_line << train_input.row(train_index);
 				for (size_t line = 0; line < model.cols() - 1; line++)
 				{
 					reference, train_input.row(train_index);
 				}
-				update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_jx.row(train_index) * duplicate_line).transpose().array();
+				update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_yx.row(train_index) * duplicate_line).transpose().array();
 				//std::cout << duplicate_line << "\n\n";
 				//std::cout << update << "\n\n";
-				model += update;
+				model -= update;
 				std::cout << model << "\n\n";
 			}
 			for (size_t i = 0; i < update.size(); i++)
@@ -79,18 +79,18 @@ namespace LinearRegression
 		{
 			for (size_t train_index = 0; train_index < train_input.rows(); train_index++)
 			{
-				auto hx_sub_jx = train_output - train_input * model;
-				//std::cout << hx_sub_jx << "\n\n";
+				auto hx_sub_yx = train_input * model - train_output;
+				//std::cout << hx_sub_yx << "\n\n";
 				Eigen::MatrixXd duplicate_line(model.cols(), train_input.cols());
 				auto&& reference = duplicate_line << train_input.row(train_index);
 				for (size_t line = 0; line < model.cols() - 1; line++)
 				{
 					reference, train_input.row(train_index);
 				}
-				Eigen::MatrixXd update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_jx.row(train_index) * duplicate_line).transpose().array();
+				Eigen::MatrixXd update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_yx.row(train_index) * duplicate_line).transpose().array();
 				//std::cout << duplicate_line << "\n\n";
 				//std::cout << update << "\n\n";
-				model += update;
+				model -= update;
 				std::cout << model << "\n\n";
 			}
 		}

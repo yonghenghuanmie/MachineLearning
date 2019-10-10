@@ -2,9 +2,7 @@
 #include <cstdlib>
 #include <tuple>
 #include <iostream>
-#include <type_traits>
 #include <Eigen/Dense>
-//#include "lazy.h"
 
 namespace LogisticRegression
 {
@@ -24,7 +22,7 @@ namespace LogisticRegression
 			float hx = θ₁ * X₁ + θ₂ * X₂ + error;
 			train_output[i] = hx > 800 ? 1 : 0;
 		}
-		return { (train_input.normalized().array() - 0.5).matrix(), train_output };
+		return { train_input.normalized()/*.array()- train_input.normalized().norm()/ std::sqrt(counts)/2*/, train_output };
 	}
 
 	//        -z
@@ -34,8 +32,37 @@ namespace LogisticRegression
 	double LossFunction(const Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output)
 	{
 		auto hx = 1 / (1 + Eigen::exp(-1 * (train_input * model).array()));
-		std::cout << hx << std::endl;
+		//std::cout << hx << std::endl;
+		//std::cout << Eigen::log(1 - hx) << std::endl;
 		return -1.0 / train_output.rows() * (train_output.array() * Eigen::log(hx) + (1 - train_output.array()) * Eigen::log(1 - hx)).sum();
+	}
+
+	//                            i      i     i
+	//θ = θ - α * 1/m * ∑(h(x) - y(x) ) * x
+	// j    j                                  j
+	void GradientDescent(Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output, const Eigen::VectorXd& learning_rate, size_t batch_size)
+	{
+		for (size_t i = 0; i < batch_size; i++)
+		{
+			for (size_t train_index = 0; train_index < train_input.rows(); train_index++)
+			{
+				auto hx = 1 / (1 + Eigen::exp(-1 * (train_input * model).array()));
+				auto hx_sub_yx = hx.matrix() - train_output;
+				//std::cout << hx_sub_yx << "\n\n";
+				Eigen::MatrixXd duplicate_line(model.cols(), train_input.cols());
+				auto&& reference = duplicate_line << train_input.row(train_index);
+				for (size_t line = 0; line < model.cols() - 1; line++)
+				{
+					reference, train_input.row(train_index);
+				}
+				Eigen::MatrixXd update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_yx.row(train_index) * duplicate_line).transpose().array();
+				//std::cout << duplicate_line << "\n\n";
+				//std::cout << update << "\n\n";
+				std::cout << LossFunction(model, train_input, train_output) << "\n\n";
+				model -= update;
+				std::cout << model << "\n\n";
+			}
+		}
 	}
 }
 
@@ -47,10 +74,11 @@ int main()
 	//std::cout << train_input << std::endl;
 	//std::cout << train_output << std::endl;
 
-	Eigen::MatrixXd model = Eigen::Vector2d(10, 100);
-	Eigen::Vector2d learning_rate(0.001, 1);
+	Eigen::MatrixXd model = Eigen::Vector2d(1, 200);
+	Eigen::Vector2d learning_rate(1, 10);
 	double limit = 0.05;
-	size_t batch_size = 25;
-	std::cout << LogisticRegression::LossFunction(model, train_input, train_output) << std::endl;
+	size_t batch_size = 10;
+	//std::cout << LogisticRegression::LossFunction(model, train_input, train_output) << std::endl;
+	LogisticRegression::GradientDescent(model, train_input, train_output, learning_rate, batch_size);
 	return 0;
 }
