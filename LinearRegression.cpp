@@ -38,13 +38,12 @@ namespace LinearRegression
 	// j    j                                  j
 	void GradientDescent(Eigen::MatrixXd& model, const Eigen::MatrixXd& train_input, const Eigen::MatrixXd& train_output, const Eigen::VectorXd& learning_rate, double limit)
 	{
-		bool convergence;
 		size_t batch_size = 0;
+		Eigen::MatrixXd update = Eigen::MatrixXd::Zero(model.rows(), model.cols());
 		do
 		{
-			convergence = true;
 			batch_size++;
-			Eigen::MatrixXd update;
+			Eigen::MatrixXd last_update;
 			for (size_t train_index = 0; train_index < train_input.rows(); train_index++)
 			{
 				auto hx_sub_yx = train_input * model - train_output;
@@ -55,21 +54,24 @@ namespace LinearRegression
 				{
 					reference, train_input.row(train_index);
 				}
+				last_update = update;
 				update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_yx.row(train_index) * duplicate_line).transpose().array();
 				//std::cout << duplicate_line << "\n\n";
 				//std::cout << update << "\n\n";
 				model -= update;
 				std::cout << model << "\n\n";
 			}
-			for (size_t i = 0; i < update.size(); i++)
+
+			if (last_update.minCoeff() != 0)
 			{
-				if (update.array()(i) > limit)
-				{
-					convergence = false;
+				//non-convergence
+				if ((update.array().abs() > last_update.array().abs()).sum())
 					break;
-				}
+				//convergence
+				if ((update.array() / last_update.array()).abs().maxCoeff() < limit)
+					break;
 			}
-		} while (!convergence);
+		} while (true);
 		std::cout << "batch_size:" << batch_size << "\n\n";
 	}
 
@@ -121,11 +123,11 @@ int main_()
 	//std::cout << train_input << std::endl;
 	//std::cout << train_output << std::endl;
 
-	Eigen::MatrixXd model = Eigen::Vector2d(10, 100);
-	Eigen::Vector2d learning_rate(0.001, 1);
+	Eigen::MatrixXd model = Eigen::Vector2d(1, 200);
+	Eigen::Vector2d learning_rate(0.005, 1);
 	double limit = 0.05;
 	size_t batch_size = 25;
-	LinearRegression::GradientDescent(model, train_input, train_output, learning_rate, /*limit*/batch_size);
+	LinearRegression::GradientDescent(model, train_input, train_output, learning_rate, limit/*batch_size*/);
 	std::cout << LinearRegression::NormalEquation(train_input, train_output) << std::endl;
 	return 0;
 }
