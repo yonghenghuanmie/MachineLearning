@@ -22,7 +22,12 @@ namespace LogisticRegression
 			float hx = θ₁ * X₁ + θ₂ * X₂ + error;
 			train_output[i] = hx > 800 ? 1 : 0;
 		}
-		return { train_input.normalized()/*.array()- train_input.normalized().norm()/ std::sqrt(counts)/2*/, train_output };
+		for (size_t i = 0; i < train_input.cols() - 1; i++)
+		{
+			auto&& col_i = train_input.col(i);
+			col_i = (col_i.array() - col_i.sum() / train_input.rows() / 2) / (col_i.maxCoeff() - col_i.minCoeff());
+		}
+		return { train_input, train_output };
 	}
 
 	//        -z
@@ -57,7 +62,7 @@ namespace LogisticRegression
 				}
 				Eigen::MatrixXd update = learning_rate.array() * (1.0 / train_input.rows() * hx_sub_yx.row(train_index) * duplicate_line).transpose().array();
 				//std::cout << duplicate_line << "\n\n";
-				//std::cout << update << "\n\n";
+				std::cout << update << "\n\n";
 				std::cout << LossFunction(model, train_input, train_output) << "\n\n";
 				model -= update;
 				std::cout << model << "\n\n";
